@@ -67,7 +67,7 @@ Toggle between light and dark themes with the theme switcher button in the setti
 
 Khushal - khushaldemehta@gmail.com
 
-Project Link: [https://github.com/Khushal-Me/Minesweeper-Game](https://github.com/Khushal-Me/Minesweeper-Game)
+Project Link: https://khushal-me.github.io/Minesweeper-Game/
 
 ## 📄 License
 
