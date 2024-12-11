@@ -198,14 +198,96 @@ class Minesweeper {
     }
 }
 
-// Initialize game
-let game = new Minesweeper();
+// Settings and UI Controls
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsModal = document.getElementById('settingsModal');
+const cancelSettings = document.getElementById('cancelSettings');
+const saveSettings = document.getElementById('saveSettings');
+const rowsInput = document.getElementById('rowsInput');
+const colsInput = document.getElementById('colsInput');
+const minesInput = document.getElementById('minesInput');
+
+// Load saved settings or set defaults
+let gameSettings = JSON.parse(localStorage.getItem('gameSettings')) || {
+    rows: 9,
+    cols: 9,
+    mines: 10
+};
+
+// Initialize input values
+function initializeSettings() {
+    rowsInput.value = gameSettings.rows;
+    colsInput.value = gameSettings.cols;
+    minesInput.value = gameSettings.mines;
+
+    // Set min/max values
+    rowsInput.addEventListener('input', updateMinesLimit);
+    colsInput.addEventListener('input', updateMinesLimit);
+    updateMinesLimit();
+}
+
+function updateMinesLimit() {
+    const totalCells = rowsInput.value * colsInput.value;
+    minesInput.max = Math.floor(totalCells * 0.85); // Maximum 85% of cells can be mines
+    minesInput.min = Math.max(1, Math.floor(totalCells * 0.1)); // Minimum 10% of cells
+    
+    // Update mines if current value is out of bounds
+    if (minesInput.value > minesInput.max) {
+        minesInput.value = minesInput.max;
+    } else if (minesInput.value < minesInput.min) {
+        minesInput.value = minesInput.min;
+    }
+}
+
+// Settings modal controls
+settingsBtn.addEventListener('click', () => {
+    settingsModal.classList.remove('hidden');
+});
+
+cancelSettings.addEventListener('click', () => {
+    settingsModal.classList.add('hidden');
+    initializeSettings(); // Reset to current settings
+});
+
+saveSettings.addEventListener('click', () => {
+    const newSettings = {
+        rows: parseInt(rowsInput.value),
+        cols: parseInt(colsInput.value),
+        mines: parseInt(minesInput.value)
+    };
+
+    // Validate settings
+    const totalCells = newSettings.rows * newSettings.cols;
+    if (newSettings.mines >= totalCells) {
+        alert('Too many mines for the grid size!');
+        return;
+    }
+
+    // Save settings
+    gameSettings = newSettings;
+    localStorage.setItem('gameSettings', JSON.stringify(gameSettings));
+    
+    // Start new game with new settings
+    game.stopTimer();
+    game = new Minesweeper(gameSettings.rows, gameSettings.cols, gameSettings.mines);
+    game.renderBoard();
+    document.getElementById('timer').textContent = '0';
+    document.getElementById('mineCount').textContent = game.mines;
+    
+    settingsModal.classList.add('hidden');
+});
+
+// Initialize settings
+initializeSettings();
+
+// Initialize game with saved settings
+let game = new Minesweeper(gameSettings.rows, gameSettings.cols, gameSettings.mines);
 game.renderBoard();
 
 // New game button
 document.getElementById('newGameBtn').addEventListener('click', () => {
     game.stopTimer();
-    game = new Minesweeper();
+    game = new Minesweeper(gameSettings.rows, gameSettings.cols, gameSettings.mines);
     game.renderBoard();
     document.getElementById('timer').textContent = '0';
     document.getElementById('mineCount').textContent = game.mines;
