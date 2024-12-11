@@ -53,7 +53,7 @@ Scores are saved locally and persist between sessions. Compete against your best
 
 ## 🌓 Dark Mode
 
-Toggle between light and dark themes with the theme switcher button in the settings panel.
+Toggle between light and dark themes.
 
 ## 🤝 Contributing
 
