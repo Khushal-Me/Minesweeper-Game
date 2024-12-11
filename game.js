@@ -10,7 +10,15 @@ class Minesweeper {
         this.gameStarted = false;
         this.timer = 0;
         this.timerInterval = null;
+        this.difficulty = this.getDifficulty();
         this.init();
+    }
+
+    getDifficulty() {
+        const totalCells = this.rows * this.cols;
+        if (totalCells <= 81 && this.mines <= 10) return 'beginner';
+        if (totalCells <= 256 && this.mines <= 40) return 'intermediate';
+        return 'expert';
     }
 
     init() {
@@ -122,8 +130,27 @@ class Minesweeper {
         if (this.revealed.size === safeCells) {
             this.gameOver = true;
             this.stopTimer();
-            alert('Congratulations! You won!');
+            const score = this.timer;
+            this.saveHighScore(score);
+            alert('Congratulations! You won in ' + score + ' seconds!');
         }
+    }
+
+    saveHighScore(score) {
+        const highScores = JSON.parse(localStorage.getItem(`highScores_${this.difficulty}`) || '[]');
+        highScores.push({
+            score,
+            date: new Date().toISOString(),
+            grid: `${this.rows}x${this.cols}`,
+            mines: this.mines
+        });
+        
+        // Sort and keep only top 10 scores
+        highScores.sort((a, b) => a.score - b.score);
+        highScores.splice(10);
+        
+        localStorage.setItem(`highScores_${this.difficulty}`, JSON.stringify(highScores));
+        updateHighScoreDisplay(this.difficulty);
     }
 
     startTimer() {
@@ -182,15 +209,14 @@ class Minesweeper {
                 const currentRow = row;
                 const currentCol = col;
                 
-                cell.addEventListener('mousedown', (e) => {
-                    if (e.button === 0) { // Left click
-                        this.reveal(currentRow, currentCol);
-                        this.renderBoard();
-                    } else if (e.button === 2) { // Right click
-                        this.toggleFlag(currentRow, currentCol);
-                        this.renderBoard();
-                    }
-                });
+                if (isMobile) {
+                    cell.addEventListener('click', () => handleCellClick(currentRow, currentCol));
+                } else {
+                    cell.addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        handleCellClick(currentRow, currentCol, e.button === 2);
+                    });
+                }
 
                 board.appendChild(cell);
             }
@@ -280,6 +306,101 @@ saveSettings.addEventListener('click', () => {
 // Initialize settings
 initializeSettings();
 
+// Mobile controls
+let isFlagMode = false;
+const modeToggle = document.getElementById('modeToggle');
+const currentMode = document.getElementById('currentMode');
+const mobileFlagBtn = document.getElementById('mobileFlagBtn');
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+if (isMobile) {
+    modeToggle.addEventListener('click', () => {
+        isFlagMode = !isFlagMode;
+        currentMode.textContent = isFlagMode ? 'Flag' : 'Reveal';
+        modeToggle.classList.toggle('bg-red-500');
+        modeToggle.classList.toggle('bg-blue-500');
+    });
+
+    mobileFlagBtn.addEventListener('click', () => {
+        isFlagMode = !isFlagMode;
+        currentMode.textContent = isFlagMode ? 'Flag' : 'Reveal';
+        modeToggle.classList.toggle('bg-red-500');
+        modeToggle.classList.toggle('bg-blue-500');
+    });
+}
+
+// High Score functionality
+const highScoreBtn = document.getElementById('highScoreBtn');
+const highScoreModal = document.getElementById('highScoreModal');
+const closeHighScores = document.getElementById('closeHighScores');
+const beginnerScores = document.getElementById('beginnerScores');
+const intermediateScores = document.getElementById('intermediateScores');
+const expertScores = document.getElementById('expertScores');
+
+function updateHighScoreDisplay(difficulty) {
+    const highScores = JSON.parse(localStorage.getItem(`highScores_${difficulty}`) || '[]');
+    const highScoreList = document.getElementById('highScoreList');
+    
+    // Update difficulty buttons
+    [beginnerScores, intermediateScores, expertScores].forEach(btn => {
+        btn.className = 'flex-1 py-2 px-4 rounded';
+        if (btn.id.startsWith(difficulty)) {
+            btn.className += ' bg-blue-500 text-white';
+        } else {
+            btn.className += ' bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+        }
+    });
+
+    // Display scores
+    highScoreList.innerHTML = highScores.length ? '' : '<p class="text-gray-500 dark:text-gray-400 text-center">No scores yet</p>';
+    
+    highScores.forEach((score, index) => {
+        const date = new Date(score.date).toLocaleDateString();
+        highScoreList.innerHTML += `
+            <div class="flex justify-between items-center p-2 ${index % 2 === 0 ? 'bg-gray-50 dark:bg-gray-700' : 'bg-white dark:bg-gray-800'} rounded">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-700 dark:text-gray-300">${index + 1}.</span>
+                    <span class="text-gray-900 dark:text-gray-100">${score.score}s</span>
+                </div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">
+                    ${score.grid} • ${score.mines} mines • ${date}
+                </div>
+            </div>
+        `;
+    });
+}
+
+highScoreBtn.addEventListener('click', () => {
+    highScoreModal.classList.remove('hidden');
+    updateHighScoreDisplay('beginner');
+});
+
+closeHighScores.addEventListener('click', () => {
+    highScoreModal.classList.add('hidden');
+});
+
+beginnerScores.addEventListener('click', () => updateHighScoreDisplay('beginner'));
+intermediateScores.addEventListener('click', () => updateHighScoreDisplay('intermediate'));
+expertScores.addEventListener('click', () => updateHighScoreDisplay('expert'));
+
+// Update cell click handling for mobile
+function handleCellClick(row, col, isRightClick = false) {
+    if (isMobile) {
+        if (isFlagMode) {
+            game.toggleFlag(row, col);
+        } else {
+            game.reveal(row, col);
+        }
+    } else {
+        if (isRightClick) {
+            game.toggleFlag(row, col);
+        } else {
+            game.reveal(row, col);
+        }
+    }
+    game.renderBoard();
+}
+
 // Initialize game with saved settings
 let game = new Minesweeper(gameSettings.rows, gameSettings.cols, gameSettings.mines);
 game.renderBoard();
@@ -306,3 +427,6 @@ darkModeToggle.addEventListener('click', () => {
     html.classList.toggle('dark');
     localStorage.setItem('darkMode', html.classList.contains('dark'));
 });
+
+// Prevent context menu on right-click
+document.addEventListener('contextmenu', e => e.preventDefault());
